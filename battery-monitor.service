@@ -1,0 +1,12 @@
+[Unit]
+Description=Battery Monitor for shutdown and wake on lan servers
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/battery-monitor.sh
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
