@@ -75,7 +75,13 @@ chmod +x "$INSTALL_PATH"
 echo "Installed to $INSTALL_PATH"
 
 echo ""
-echo "Step 5: Installing systemd service..."
+echo "Step 5: Installing logrotate configuration..."
+cp "$SCRIPT_DIR/battery-monitor" /etc/logrotate.d/battery-monitor
+chmod 644 /etc/logrotate.d/battery-monitor
+echo "Logrotate configured at /etc/logrotate.d/battery-monitor"
+
+echo ""
+echo "Step 6: Installing systemd service..."
 cp "$SCRIPT_DIR/battery-monitor.service" "$SERVICE_PATH"
 systemctl daemon-reload
 systemctl enable battery-monitor.service

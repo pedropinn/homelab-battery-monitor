@@ -45,7 +45,8 @@ The script will:
 1. Install required packages (acpi, wakeonlan, openssh-client)
 2. Generate SSH keys if needed
 3. Prompt for target server IPs and MAC addresses
-4. Install and start the monitoring service
+4. Configure log rotation
+5. Install and start the monitoring service
 
 After setup completes, copy SSH keys to each server:
 
@@ -101,7 +102,13 @@ Find MAC addresses on each server:
 ip link show | grep "link/ether"
 ```
 
-**6. Install the service:**
+**6. Install logrotate configuration:**
+```bash
+cp battery-monitor /etc/logrotate.d/battery-monitor
+chmod 644 /etc/logrotate.d/battery-monitor
+```
+
+**7. Install the service:**
 ```bash
 cp battery-monitor.sh /usr/local/bin/
 chmod +x /usr/local/bin/battery-monitor.sh
@@ -122,6 +129,8 @@ Check service status:
 ```bash
 systemctl status battery-monitor.service
 ```
+
+Log rotation is configured automatically (daily rotation, keeps 7 days, max 10MB per file).
 
 ## Troubleshooting
 

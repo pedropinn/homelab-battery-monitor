@@ -1,0 +1,8 @@
+/var/log/battery-shutdown.log {
+    daily
+    rotate 7
+    missingok
+    notifempty
+    maxsize 10M
+    create 0644 root root
+}
