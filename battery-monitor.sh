@@ -1,11 +1,11 @@
 #!/bin/bash
  
-BATTERY_WAIT_TIME=600      # 10 minutes on battery before shutting down other nodes
+BATTERY_WAIT_TIME=300      # 5 minutes on battery before shutting down other nodes
 BATTERY_CRITICAL_LEVEL=15  # Battery % to shutdown this notebook
-POWER_WAIT_TIME=300        # 5 minutes with power before waking up other nodes
+POWER_WAIT_TIME=180        # 3 minutes with power before waking up other nodes
 CHECK_INTERVAL=30          # Check every 30 seconds
 BATTERY_LOG_INTERVAL=60    # Log battery every 1 minute
-SHUTDOWN_VERIFY_TIME=300   # 5 minutes to verify nodes shutdown
+SHUTDOWN_VERIFY_TIME=60    # 1 minutes to verify nodes shutdown
 
 STATE_FILE="/tmp/battery_state"
 WAKEUP_DONE_FILE="/tmp/wakeup_done"
