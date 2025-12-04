@@ -4,7 +4,7 @@ Automated power management for homelab environments. Uses a notebook with batter
 
 ## How It Works
 
-When AC power fails, the notebook (running on battery) waits 10 minutes, then shuts down configured servers via SSH. When power returns, it waits 5 minutes and wakes servers using Wake-on-LAN.
+When AC power fails, the notebook (running on battery) waits 5 minutes, then shuts down configured servers via SSH. When power returns, it waits 3 minutes and wakes servers using Wake-on-LAN.
 
 ## Architecture
 
