@@ -13,7 +13,7 @@ UPS_SHUTDOWN_LEVEL=70      # UPS battery % to shutdown nodes
 STATE_FILE="/tmp/battery_state"
 WAKEUP_DONE_FILE="/tmp/wakeup_done"
 SHUTDOWN_DONE_FILE="/tmp/shutdown_done"
-LOG_FILE="/var/log/battery-shutdown.log"
+LOG_FILE="/var/log/battery-monitor.log"
 
 declare -A OTHER_NODES
 OTHER_NODES["10.10.10.30"]="84:47:09:0c:83:2d"

@@ -173,6 +173,6 @@ for ip in "${!nodes[@]}"; do
 done
 echo ""
 echo "4. Monitor logs:"
-echo "   tail -f /var/log/battery-shutdown.log"
+echo "   tail -f /var/log/battery-monitor.log"
 echo ""
 echo "Setup complete. Service is running."

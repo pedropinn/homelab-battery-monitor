@@ -1,4 +1,4 @@
-/var/log/battery-shutdown.log {
+/var/log/battery-monitor.log {
     daily
     rotate 7
     missingok
