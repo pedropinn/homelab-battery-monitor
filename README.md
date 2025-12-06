@@ -1,22 +1,29 @@
 # Homelab Battery Monitor
 
-Automated power management for homelab environments. Uses a notebook with battery as a controller to manage server shutdown/startup during power outages.
+Automated power management for homelab environments. Uses a notebook with battery as a controller to manage server shutdown/startup during power outages, with UPS monitoring via NUT.
 
 ## How It Works
 
-When AC power fails, the notebook (running on battery) waits 5 minutes, then shuts down configured servers via SSH. When power returns, it waits 3 minutes and wakes servers using Wake-on-LAN.
+When AC power fails, the notebook (running on battery) monitors both time elapsed and UPS battery level. Servers are shut down when either condition is met:
+- **10 minutes** on battery power OR **UPS battery drops to 70%** 
+
+When power returns, it waits 3 minutes and wakes servers using Wake-on-LAN.
 
 ## Architecture
 
 ```
-Notebook (Controller)        UPS/Nobreak
-- Wall outlet powered        - Servers (managed)
-- Has battery backup         - Switch
-- Runs monitor script        - Access Points
-                             
+┌─────────────────────┐     ┌─────────────────────┐
+│  Notebook           │     │  UPS (APC 1500VA)   │
+│  (Controller)       │     │                     │
+│                     │     │  ┌─────────────┐    │
+│  - Wall outlet      │     │  │ Servers     │    │
+│  - Own battery      │ NUT │  │ Switch      │    │
+│  - Monitor script ──┼─────┼──│ Access Pts  │    │
+│                     │     │  └─────────────┘    │
+└─────────────────────┘     └─────────────────────┘
 ```
 
-The notebook must be plugged directly to the wall outlet, not the UPS. This allows it to detect power failures independently.
+The notebook must be plugged directly to the wall outlet, not the UPS. This allows it to detect power failures independently and monitor the UPS via NUT (Network UPS Tools).
 
 ## Prerequisites
 
@@ -24,6 +31,12 @@ The notebook must be plugged directly to the wall outlet, not the UPS. This allo
 - Linux (Debian-based tested)
 - Connected directly to wall outlet
 - ACPI support for battery detection
+- Network access to UPS server (NUT)
+
+**UPS Server (where UPS is connected):**
+- NUT server configured and running
+- `upsd` listening on network
+- User credentials configured in `/etc/nut/upsd.users`
 
 **Target servers:**
 - SSH root access with key authentication
@@ -42,11 +55,13 @@ chmod +x setup.sh
 ```
 
 The script will:
-1. Install required packages (acpi, wakeonlan, openssh-client)
+1. Install required packages (acpi, wakeonlan, openssh-client, nut, nut-client)
 2. Generate SSH keys if needed
-3. Prompt for target server IPs and MAC addresses
-4. Configure log rotation
-5. Install and start the monitoring service
+3. Configure NUT client for UPS monitoring
+4. Prompt for target server IPs and MAC addresses
+5. Configure log rotation
+6. Install `ups-status` utility (runs on login)
+7. Install and start the monitoring service
 
 After setup completes, copy SSH keys to each server:
 
@@ -152,4 +167,41 @@ ethtool eth0 | grep Wake-on
 
 # Enable if needed:
 ethtool -s eth0 wol g
+```
+
+**UPS not detected:**
+```bash
+# Test connection to UPS
+upsc apc@localhost
+
+# Check NUT client status
+systemctl status nut-client
+```
+
+## UPS Server Configuration
+
+The UPS must be connected to a server running NUT. Configure the server to allow remote monitoring:
+
+**On the UPS server, edit `/etc/nut/upsd.users`:**
+```
+[upsmon]
+    password = YOUR_PASSWORD
+    upsmon slave
+```
+
+**Edit `/etc/nut/upsd.conf` to allow network access:**
+```
+LISTEN 0.0.0.0 3493
+```
+
+**Restart NUT server:**
+```bash
+systemctl restart nut-server
+```
+
+## Utilities
+
+**ups-status** - Displays current UPS and notebook battery status. Automatically shown on login.
+```bash
+ups-status
 ```

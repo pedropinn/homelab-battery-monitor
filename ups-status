@@ -1,0 +1,78 @@
+#!/bin/bash
+
+UPS="apc@localhost"
+
+# =====================
+# UPS
+# =====================
+ups_status=$(upsc $UPS ups.status 2>/dev/null)
+ups_battery=$(upsc $UPS battery.charge 2>/dev/null)
+ups_runtime_sec=$(upsc $UPS battery.runtime 2>/dev/null)
+ups_load=$(upsc $UPS ups.load 2>/dev/null)
+
+if [ -n "$ups_load" ] && [ -n "$ups_runtime_sec" ]; then
+    ups_watts=$((ups_load * 900 / 100))
+    ups_runtime_min=$((ups_runtime_sec / 60))
+else
+    ups_watts="-"
+    ups_runtime_min="-"
+fi
+
+if [[ "$ups_status" == *"OL"* ]]; then
+    ups_power="ON"
+elif [ -z "$ups_status" ]; then
+    ups_power="N/A"
+else
+    ups_power="OFF"
+fi
+
+# =====================
+# Notebook
+# =====================
+nb_ac=$(cat /sys/class/power_supply/AC/online 2>/dev/null)
+nb_battery=$(cat /sys/class/power_supply/BAT0/capacity 2>/dev/null)
+nb_power=$(cat /sys/class/power_supply/BAT0/power_now 2>/dev/null || echo 0)
+nb_energy=$(cat /sys/class/power_supply/BAT0/energy_now 2>/dev/null || echo 0)
+
+if [ -n "$nb_power" ] && [ "$nb_power" -gt 0 ]; then
+    nb_watts=$((nb_power / 1000000))
+    nb_runtime_min=$((nb_energy * 60 / nb_power))
+else
+    nb_watts="-"
+    nb_runtime_min="-"
+fi
+
+if [ "$nb_ac" -eq 1 ] 2>/dev/null; then
+    nb_power="ON"
+elif [ -z "$nb_ac" ]; then
+    nb_power="N/A"
+else
+    nb_power="OFF"
+fi
+
+# =====================
+# Output
+# =====================
+echo "================================"
+echo "  UPS APC 1500VA"
+echo "  ----------------"
+echo "  Power:    $ups_power"
+if [ "$ups_power" == "OFF" ]; then
+    echo "  Load   :  ${ups_watts}W (${ups_load}%)"
+    echo "  Battery:  ${ups_battery}%"
+    echo "  Runtime:  ${ups_runtime_min} min"
+elif [ "$ups_power" == "ON" ]; then
+    echo "  Battery:  ${ups_battery}%"
+fi
+echo "  ----------------"
+echo "  MAIN BATTERY"
+echo "  ----------------"
+echo "  Power:    $nb_power"
+if [ "$nb_power" == "OFF" ]; then
+    echo "  Load   :  ${nb_watts}W"
+    echo "  Battery:  ${nb_battery}%"
+    echo "  Runtime:  ${nb_runtime_min} min"
+elif [ "$nb_power" == "ON" ]; then
+    echo "  Battery:  ${nb_battery}%"
+fi
+echo "================================"

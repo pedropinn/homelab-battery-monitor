@@ -1,11 +1,14 @@
 #!/bin/bash
  
-BATTERY_WAIT_TIME=300      # 5 minutes on battery before shutting down other nodes
-BATTERY_CRITICAL_LEVEL=15  # Battery % to shutdown this notebook
+BATTERY_WAIT_TIME=600      # 10 minutes on battery before shutting down other nodes
+BATTERY_CRITICAL_LEVEL=4   # Battery % to shutdown this notebook
 POWER_WAIT_TIME=180        # 3 minutes with power before waking up other nodes
 CHECK_INTERVAL=30          # Check every 30 seconds
 BATTERY_LOG_INTERVAL=60    # Log battery every 1 minute
 SHUTDOWN_VERIFY_TIME=60    # 1 minutes to verify nodes shutdown
+
+UPS_NAME="apc@localhost"   # UPS identifier for NUT
+UPS_SHUTDOWN_LEVEL=70      # UPS battery % to shutdown nodes
 
 STATE_FILE="/tmp/battery_state"
 WAKEUP_DONE_FILE="/tmp/wakeup_done"
@@ -28,6 +31,15 @@ is_on_battery() {
 
 get_battery_level() {
     acpi -b | grep -oP '\d+(?=%)' | head -1
+}
+
+is_ups_available() {
+    upsc "$UPS_NAME" ups.status &>/dev/null
+}
+
+get_ups_battery_level() {
+    local level=$(upsc "$UPS_NAME" battery.charge 2>/dev/null)
+    echo "${level:-100}"
 }
 
 is_host_online() {
@@ -137,11 +149,16 @@ wakeup_other_nodes() {
 handle_battery_state() {
     local battery_level=$(get_battery_level)
     local current_time=$(date +%s)
-    
+    local ups_level=100
+
+    if is_ups_available; then
+        ups_level=$(get_ups_battery_level)
+    fi
+
     if [ -f "$STATE_FILE" ]; then
         source "$STATE_FILE"
     fi
-    
+
     if [ -z "$on_battery" ] || [ "$on_battery" -lt $((current_time - 7200)) ]; then
         on_battery=$current_time
         echo "on_battery=$on_battery" > "$STATE_FILE"
@@ -152,25 +169,33 @@ handle_battery_state() {
         log_message "Power disconnected"
         return
     fi
-    
+
     local elapsed=$((current_time - on_battery))
-    
-    if [ $elapsed -ge $BATTERY_WAIT_TIME ] && [ ! -f "$SHUTDOWN_DONE_FILE" ]; then
+
+    # Check UPS battery level - shutdown immediately if critical
+    if [ "$ups_level" -le "$UPS_SHUTDOWN_LEVEL" ] && [ ! -f "$SHUTDOWN_DONE_FILE" ]; then
+        log_message "UPS battery critical: ${ups_level}% - Shutting down nodes"
+        shutdown_local_vms
+        shutdown_other_nodes
+        LAST_BATTERY_LOG=0
+    # Check time elapsed - shutdown after wait time
+    elif [ $elapsed -ge $BATTERY_WAIT_TIME ] && [ ! -f "$SHUTDOWN_DONE_FILE" ]; then
+        log_message "Wait time elapsed: ${elapsed}s - Shutting down nodes"
         shutdown_local_vms
         shutdown_other_nodes
         LAST_BATTERY_LOG=0
     elif [ ! -f "$SHUTDOWN_DONE_FILE" ]; then
         local remaining=$((BATTERY_WAIT_TIME - elapsed))
-        log_message "Waiting ${BATTERY_WAIT_TIME} seconds to shutdown nodes, elapsed ${elapsed}"
+        log_message "Waiting ${BATTERY_WAIT_TIME} seconds to shutdown nodes, elapsed ${elapsed}, UPS at ${ups_level}%"
     else
         verify_nodes_shutdown
-        
+
         if [ $LAST_BATTERY_LOG -eq 0 ] || [ $((current_time - LAST_BATTERY_LOG)) -ge $BATTERY_LOG_INTERVAL ]; then
-            log_message "Battery at ${battery_level}%"
+            log_message "Battery at ${battery_level}%, UPS at ${ups_level}%"
             LAST_BATTERY_LOG=$current_time
         fi
     fi
-    
+
     if [ "$battery_level" -le "$BATTERY_CRITICAL_LEVEL" ]; then
         log_message "CRITICAL BATTERY: ${battery_level}% - Shutting down this notebook"
         shutdown -h now
