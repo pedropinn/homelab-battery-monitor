@@ -106,26 +106,26 @@ fi
 
 echo ""
 echo "Step 4: Configure target nodes"
-echo "Enter the IP addresses and MAC addresses of servers to manage"
-echo "Press Enter with empty IP to finish"
+echo "Enter nodes in format: IP,MAC (e.g., 10.10.10.30,84:47:09:0c:83:2d)"
+echo "Press Enter with empty input to finish"
 echo ""
 
-declare -A nodes
+nodes=()
 
 while true; do
-    read -p "Server IP (or Enter to finish): " ip
-    if [ -z "$ip" ]; then
+    read -p "Node (IP,MAC or Enter to finish): " node_input
+    if [ -z "$node_input" ]; then
         break
     fi
 
-    read -p "MAC address for $ip: " mac
-    if [ -z "$mac" ]; then
-        echo "Error: MAC address cannot be empty"
+    # Validate format
+    if ! echo "$node_input" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+,[0-9a-fA-F:]+$'; then
+        echo "Error: Invalid format. Use IP,MAC (e.g., 10.10.10.30,84:47:09:0c:83:2d)"
         continue
     fi
 
-    nodes["$ip"]="$mac"
-    echo "Added: $ip -> $mac"
+    nodes+=("$node_input")
+    echo "Added: $node_input"
     echo ""
 done
 
@@ -138,12 +138,14 @@ echo ""
 echo "Step 5: Creating configuration file..."
 cp "$SCRIPT_DIR/battery-monitor.sh" "$INSTALL_PATH"
 
-config_line="declare -A OTHER_NODES"
-for ip in "${!nodes[@]}"; do
-    config_line="${config_line}\nOTHER_NODES[\"${ip}\"]=\"${nodes[$ip]}\""
+# Build the nodes array configuration
+nodes_config="OTHER_NODES=("
+for node in "${nodes[@]}"; do
+    nodes_config="${nodes_config}\n    \"${node}\""
 done
+nodes_config="${nodes_config}\n)"
 
-sed -i "/^declare -A OTHER_NODES/,/^$/c\\${config_line}\n" "$INSTALL_PATH"
+sed -i "/^OTHER_NODES=(/,/^)/c\\${nodes_config}" "$INSTALL_PATH"
 
 chmod +x "$INSTALL_PATH"
 echo "Installed to $INSTALL_PATH"
@@ -183,17 +185,20 @@ systemctl status battery-monitor.service --no-pager -l
 echo ""
 echo "Next steps:"
 echo "1. Copy SSH keys to each server:"
-for ip in "${!nodes[@]}"; do
+for node in "${nodes[@]}"; do
+    ip=$(echo "$node" | cut -d',' -f1)
     echo "   ssh-copy-id root@$ip"
 done
 echo ""
 echo "2. Test SSH connection to each server:"
-for ip in "${!nodes[@]}"; do
+for node in "${nodes[@]}"; do
+    ip=$(echo "$node" | cut -d',' -f1)
     echo "   ssh root@$ip 'echo Connection OK'"
 done
 echo ""
 echo "3. Enable Wake-on-LAN on each server:"
-for ip in "${!nodes[@]}"; do
+for node in "${nodes[@]}"; do
+    ip=$(echo "$node" | cut -d',' -f1)
     echo "   ssh root@$ip 'ethtool -s eth0 wol g'"
 done
 echo ""

@@ -17,8 +17,9 @@ WAKEUP_DONE_FILE="/tmp/wakeup_done"
 SHUTDOWN_DONE_FILE="/tmp/shutdown_done"
 LOG_FILE="/var/log/battery-monitor.log"
 
-declare -A OTHER_NODES
-OTHER_NODES["10.10.10.30"]="84:47:09:0c:83:2d"
+OTHER_NODES=(
+    "10.10.10.30,84:47:09:0c:83:2d"
+)
 
 
 LAST_BATTERY_LOG=0
@@ -48,14 +49,22 @@ is_host_online() {
     ping -c 1 -W 2 "$1" &>/dev/null
 }
 
+get_node_ip() {
+    echo "$1" | cut -d',' -f1
+}
+
+get_node_mac() {
+    echo "$1" | cut -d',' -f2
+}
 
 has_nodes_offline() {
-    for node_ip in "${!OTHER_NODES[@]}"; do
+    for node in "${OTHER_NODES[@]}"; do
+        local node_ip=$(get_node_ip "$node")
         if ! is_host_online "$node_ip"; then
-            return 0  
+            return 0
         fi
     done
-    return 1 
+    return 1
 }
 
 shutdown_local_vms() {
@@ -71,18 +80,20 @@ shutdown_local_vms() {
 }
 
 shutdown_other_nodes() {
-    for node_ip in "${!OTHER_NODES[@]}"; do
+    for node in "${OTHER_NODES[@]}"; do
+        local node_ip=$(get_node_ip "$node")
         if is_host_online "$node_ip"; then
             log_message "Node $node_ip shutting down"
             ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no root@"$node_ip" "shutdown -h now" 2>/dev/null &
         fi
     done
-    
+
     sleep 15
-    
+
     echo "shutdown_time=$(date +%s)" > "$SHUTDOWN_DONE_FILE"
     echo "verification_logged=no" >> "$SHUTDOWN_DONE_FILE"
-    for node_ip in "${!OTHER_NODES[@]}"; do
+    for node in "${OTHER_NODES[@]}"; do
+        local node_ip=$(get_node_ip "$node")
         echo "node_${node_ip//./_}=pending" >> "$SHUTDOWN_DONE_FILE"
     done
 }
@@ -91,19 +102,20 @@ verify_nodes_shutdown() {
     if [ ! -f "$SHUTDOWN_DONE_FILE" ]; then
         return
     fi
-    
+
     source "$SHUTDOWN_DONE_FILE"
     local current_time=$(date +%s)
     local elapsed=$((current_time - shutdown_time))
-    
+
     if [ $elapsed -lt $SHUTDOWN_VERIFY_TIME ]; then
         return
     fi
-    
-    for node_ip in "${!OTHER_NODES[@]}"; do
+
+    for node in "${OTHER_NODES[@]}"; do
+        local node_ip=$(get_node_ip "$node")
         local var_name="node_${node_ip//./_}"
         local status="${!var_name}"
-        
+
         if [ "$status" = "pending" ]; then
             if ! is_host_online "$node_ip"; then
                 log_message "Node $node_ip shut down"
@@ -111,10 +123,11 @@ verify_nodes_shutdown() {
             fi
         fi
     done
-    
+
     if [ "$verification_logged" = "no" ]; then
         local all_verified=true
-        for node_ip in "${!OTHER_NODES[@]}"; do
+        for node in "${OTHER_NODES[@]}"; do
+            local node_ip=$(get_node_ip "$node")
             local var_name="node_${node_ip//./_}"
             source "$SHUTDOWN_DONE_FILE"
             local status="${!var_name}"
@@ -123,7 +136,7 @@ verify_nodes_shutdown() {
                 break
             fi
         done
-        
+
         if [ "$all_verified" = true ]; then
             sed -i "s/verification_logged=no/verification_logged=yes/" "$SHUTDOWN_DONE_FILE"
         fi
@@ -131,8 +144,9 @@ verify_nodes_shutdown() {
 }
 
 wakeup_other_nodes() {
-    for node_ip in "${!OTHER_NODES[@]}"; do
-        mac="${OTHER_NODES[$node_ip]}"
+    for node in "${OTHER_NODES[@]}"; do
+        local node_ip=$(get_node_ip "$node")
+        local mac=$(get_node_mac "$node")
 
         if is_host_online "$node_ip"; then
             log_message "Node $node_ip already online"
