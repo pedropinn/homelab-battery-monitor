@@ -205,53 +205,33 @@ handle_battery_state() {
 
 handle_power_restored() {
     local current_time=$(date +%s)
-    
+
     if [ -f "$WAKEUP_DONE_FILE" ]; then
         return
     fi
-    
+
     if [ -f "$STATE_FILE" ]; then
         source "$STATE_FILE"
     fi
-    
-    if [ -n "$on_battery" ]; then
-        if has_nodes_offline; then
-            echo "on_power=$current_time" > "$STATE_FILE"
-            log_message "Power connected"
-            rm -f "$SHUTDOWN_DONE_FILE"
-        else
-            touch "$WAKEUP_DONE_FILE"
-            rm -f "$STATE_FILE"
-        fi
-        return
-    fi
-    
-    if [ -z "$on_power" ]; then
-        if has_nodes_offline; then
-            echo "on_power=$current_time" > "$STATE_FILE"
-            log_message "Power connected"
-        else
-            touch "$WAKEUP_DONE_FILE"
-            rm -f "$STATE_FILE"
-        fi
-        return
-    fi
-    
-    if [ "$on_power" -lt $((current_time - 7200)) ]; then
-        if has_nodes_offline; then
-            echo "on_power=$current_time" > "$STATE_FILE"
-            log_message "Power connected"
-        else
-            touch "$WAKEUP_DONE_FILE"
-            rm -f "$STATE_FILE"
-        fi
-        return
-    fi
-    
-    local elapsed=$((current_time - on_power))
 
+    if ! has_nodes_offline; then
+        touch "$WAKEUP_DONE_FILE"
+        rm -f "$STATE_FILE"
+        rm -f "$SHUTDOWN_DONE_FILE"
+        return
+    fi
+
+    if [ -z "$on_power" ] || [ "$on_power" -lt $((current_time - 7200)) ]; then
+        on_power=$current_time
+        echo "on_power=$on_power" > "$STATE_FILE"
+        log_message "Power connected"
+        rm -f "$SHUTDOWN_DONE_FILE"
+        return
+    fi
+
+    local elapsed=$((current_time - on_power))
     log_message "Waiting ${POWER_WAIT_TIME} seconds, elapsed ${elapsed}"
-    
+
     if [ $elapsed -ge $POWER_WAIT_TIME ]; then
         wakeup_other_nodes
     fi

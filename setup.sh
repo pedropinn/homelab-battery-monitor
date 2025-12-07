@@ -95,7 +95,7 @@ systemctl restart nut-monitor
 
 # Test connection
 echo "Testing UPS connection..."
-sleep 2
+sleep 10
 if upsc apc@localhost ups.status &>/dev/null; then
     echo "UPS connection successful!"
     echo "  Battery: $(upsc apc@localhost battery.charge 2>/dev/null)%"
