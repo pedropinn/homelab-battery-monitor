@@ -57,19 +57,15 @@ echo "================================"
 echo "  UPS APC 1500VA"
 echo "  ----------------"
 echo "  Power:    $ups_power"
-if [ "$ups_power" == "OFF" ]; then
-    echo "  Load   :  ${ups_watts}W (${ups_load}%)"
-    echo "  Battery:  ${ups_battery}%"
-    echo "  Runtime:  ${ups_runtime_min} min"
-elif [ "$ups_power" == "ON" ]; then
-    echo "  Battery:  ${ups_battery}%"
-fi
+echo "  Load:     ${ups_watts}W (${ups_load}%)"
+echo "  Battery:  ${ups_battery}%"
+echo "  Runtime:  ${ups_runtime_min} min"
 echo "  ----------------"
 echo "  MAIN BATTERY"
 echo "  ----------------"
 echo "  Power:    $nb_power"
 if [ "$nb_power" == "OFF" ]; then
-    echo "  Load   :  ${nb_watts}W"
+    echo "  Load:     ${nb_watts}W"
     echo "  Battery:  ${nb_battery}%"
     echo "  Runtime:  ${nb_runtime_min} min"
 elif [ "$nb_power" == "ON" ]; then

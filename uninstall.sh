@@ -36,14 +36,23 @@ rm -f /etc/logrotate.d/battery-monitor
 echo "Logrotate configuration removed"
 
 echo ""
-echo "Step 5: Removing NUT client configuration..."
+echo "Step 5: Stopping NUT services..."
+systemctl stop nut-monitor 2>/dev/null || true
+systemctl stop nut-server 2>/dev/null || true
+upsdrvctl stop 2>/dev/null || true
+echo "NUT services stopped"
+
+echo ""
+echo "Step 6: Removing NUT configuration..."
 rm -f /etc/nut/nut.conf
+rm -f /etc/nut/ups.conf
+rm -f /etc/nut/upsd.conf
+rm -f /etc/nut/upsd.users
 rm -f /etc/nut/upsmon.conf
-systemctl stop nut-client 2>/dev/null || true
 echo "NUT configuration removed"
 
 echo ""
-echo "Step 6: Cleaning up state files..."
+echo "Step 7: Cleaning up state files..."
 rm -f /tmp/battery_state
 rm -f /tmp/wakeup_done
 rm -f /tmp/shutdown_done
@@ -55,12 +64,12 @@ echo "Uninstall complete!"
 echo "========================================="
 echo ""
 echo "Note: The following were NOT removed:"
-echo "  - Installed packages (acpi, wakeonlan, nut, nut-client)"
+echo "  - Installed packages (acpi, wakeonlan, nut, nut-client, nut-server)"
 echo "  - SSH keys (/root/.ssh/id_rsa)"
 echo "  - Log file (/var/log/battery-monitor.log)"
 echo ""
 echo "To remove packages manually:"
-echo "  apt remove acpi wakeonlan nut nut-client"
+echo "  apt remove acpi wakeonlan nut nut-client nut-server"
 echo ""
 echo "To remove log file:"
 echo "  rm /var/log/battery-monitor.log"

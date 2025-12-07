@@ -18,7 +18,7 @@ fi
 
 echo "Step 1: Installing required packages..."
 apt update
-apt install -y acpi wakeonlan openssh-client nut nut-client
+apt install -y acpi wakeonlan openssh-client nut nut-client nut-server
 
 echo ""
 echo "Step 2: Setting up SSH keys..."
@@ -31,25 +31,46 @@ else
 fi
 
 echo ""
-echo "Step 3: Configure UPS monitoring (NUT)"
-echo ""
-read -p "UPS name (e.g., apc@localhost or apc@192.168.1.100): " ups_name
-if [ -z "$ups_name" ]; then
-    ups_name="apc@localhost"
+echo "Step 3: Detecting and configuring UPS..."
+
+# Check for USB UPS
+if lsusb | grep -qi "american power conversion\|051d"; then
+    echo "APC UPS detected via USB"
+else
+    echo "Warning: No APC UPS detected. Make sure USB cable is connected."
 fi
 
-read -p "NUT username: " nut_user
-if [ -z "$nut_user" ]; then
-    nut_user="upsmon"
-fi
+# Configure NUT as standalone
+echo "MODE=standalone" > /etc/nut/nut.conf
 
-read -sp "NUT password: " nut_pass
-echo ""
+# Configure UPS driver
+cat > /etc/nut/ups.conf << 'EOF'
+[apc]
+    driver = usbhid-ups
+    port = auto
+    desc = "APC Back-UPS"
+EOF
 
-echo "MODE=netclient" > /etc/nut/nut.conf
+# Configure upsd server
+cat > /etc/nut/upsd.conf << 'EOF'
+LISTEN 127.0.0.1 3493
+EOF
 
-cat > /etc/nut/upsmon.conf << EOF
-MONITOR $ups_name 1 $nut_user $nut_pass slave
+# Configure upsd users
+cat > /etc/nut/upsd.users << 'EOF'
+[admin]
+    password = admin
+    actions = SET
+    instcmds = ALL
+
+[upsmon]
+    password = upsmon
+    upsmon master
+EOF
+
+# Configure upsmon
+cat > /etc/nut/upsmon.conf << 'EOF'
+MONITOR apc@localhost 1 upsmon upsmon master
 MINSUPPLIES 1
 SHUTDOWNCMD "/sbin/shutdown -h now"
 POLLFREQ 5
@@ -61,16 +82,26 @@ NOCOMMWARNTIME 300
 FINALDELAY 5
 EOF
 
-chmod 640 /etc/nut/upsmon.conf
-chown root:nut /etc/nut/upsmon.conf
+# Set permissions
+chown root:nut /etc/nut/ups.conf /etc/nut/upsd.conf /etc/nut/upsd.users /etc/nut/upsmon.conf
+chmod 640 /etc/nut/upsd.users /etc/nut/upsmon.conf
+chmod 644 /etc/nut/nut.conf /etc/nut/ups.conf /etc/nut/upsd.conf
 
-systemctl restart nut-client 2>/dev/null || true
+# Start NUT services
+echo "Starting NUT services..."
+upsdrvctl start
+systemctl restart nut-server
+systemctl restart nut-monitor
 
+# Test connection
 echo "Testing UPS connection..."
-if upsc "$ups_name" ups.status &>/dev/null; then
+sleep 2
+if upsc apc@localhost ups.status &>/dev/null; then
     echo "UPS connection successful!"
+    echo "  Battery: $(upsc apc@localhost battery.charge 2>/dev/null)%"
+    echo "  Status: $(upsc apc@localhost ups.status 2>/dev/null)"
 else
-    echo "Warning: Could not connect to UPS. Please verify the UPS server configuration."
+    echo "Warning: Could not connect to UPS. Check 'systemctl status nut-server'"
 fi
 
 echo ""
@@ -107,9 +138,6 @@ echo ""
 echo "Step 5: Creating configuration file..."
 cp "$SCRIPT_DIR/battery-monitor.sh" "$INSTALL_PATH"
 
-# Update UPS name in the script
-sed -i "s|UPS_NAME=\"apc@localhost\"|UPS_NAME=\"$ups_name\"|" "$INSTALL_PATH"
-
 config_line="declare -A OTHER_NODES"
 for ip in "${!nodes[@]}"; do
     config_line="${config_line}\nOTHER_NODES[\"${ip}\"]=\"${nodes[$ip]}\""
@@ -130,9 +158,6 @@ echo ""
 echo "Step 7: Installing ups-status utility..."
 cp "$SCRIPT_DIR/ups-status" /usr/local/bin/ups-status
 chmod +x /usr/local/bin/ups-status
-
-# Update UPS name in ups-status
-sed -i "s|UPS=\"apc@localhost\"|UPS=\"$ups_name\"|" /usr/local/bin/ups-status
 
 # Add to /etc/profile for login display
 if ! grep -q "ups-status" /etc/profile; then
