@@ -6,6 +6,8 @@ POWER_WAIT_TIME=180        # 3 minutes with power before waking up other nodes
 CHECK_INTERVAL=30          # Check every 30 seconds
 BATTERY_LOG_INTERVAL=60    # Log battery every 1 minute
 SHUTDOWN_VERIFY_TIME=60    # 1 minutes to verify nodes shutdown
+WAKEUP_RETRIES=2           # Number of retries for wake-on-lan
+WAKEUP_TIMEOUT=5           # Timeout in seconds for wakeonlan command
 
 UPS_NAME="apc@localhost"   # UPS identifier for NUT
 UPS_SHUTDOWN_LEVEL=70      # UPS battery % to shutdown nodes
@@ -131,16 +133,32 @@ verify_nodes_shutdown() {
 wakeup_other_nodes() {
     for node_ip in "${!OTHER_NODES[@]}"; do
         mac="${OTHER_NODES[$node_ip]}"
-        
+
         if is_host_online "$node_ip"; then
             log_message "Node $node_ip already online"
-        else
-            log_message "Node $node_ip woken up"
-            wakeonlan "$mac"
+            continue
+        fi
+
+        local success=false
+        for attempt in $(seq 1 $WAKEUP_RETRIES); do
+            log_message "Waking up node $node_ip (attempt $attempt/$WAKEUP_RETRIES)"
+
+            if timeout $WAKEUP_TIMEOUT wakeonlan "$mac" &>/dev/null; then
+                log_message "Node $node_ip wake packet sent"
+                success=true
+                break
+            else
+                log_message "Node $node_ip wake attempt $attempt failed"
+            fi
+
             sleep 2
+        done
+
+        if [ "$success" = false ]; then
+            log_message "ERROR: Failed to wake node $node_ip after $WAKEUP_RETRIES attempts"
         fi
     done
-    
+
     touch "$WAKEUP_DONE_FILE"
     rm -f "$STATE_FILE"
     rm -f "$SHUTDOWN_DONE_FILE"
