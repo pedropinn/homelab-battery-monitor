@@ -16,12 +16,18 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-echo "Step 1: Installing required packages..."
+echo "Step 1: Creating directories..."
+mkdir -p /var/lib/battery-monitor
+mkdir -p /var/log/battery-monitor
+echo "Directories created"
+
+echo ""
+echo "Step 2: Installing required packages..."
 apt update
 apt install -y acpi wakeonlan openssh-client nut nut-client nut-server
 
 echo ""
-echo "Step 2: Setting up SSH keys..."
+echo "Step 3: Setting up SSH keys..."
 if [ ! -f /root/.ssh/id_rsa ]; then
     echo "Generating SSH key pair..."
     ssh-keygen -t rsa -b 4096 -N "" -f /root/.ssh/id_rsa
@@ -31,7 +37,7 @@ else
 fi
 
 echo ""
-echo "Step 3: Detecting and configuring UPS..."
+echo "Step 4: Detecting and configuring UPS..."
 
 # Check for USB UPS
 if lsusb | grep -qi "american power conversion\|051d"; then
@@ -105,7 +111,7 @@ else
 fi
 
 echo ""
-echo "Step 4: Configure target nodes"
+echo "Step 5: Configure target nodes"
 echo "Enter nodes in format: IP,MAC (e.g., 10.10.10.30,84:47:09:0c:83:2d)"
 echo "Press Enter with empty input to finish"
 echo ""
@@ -135,7 +141,7 @@ if [ ${#nodes[@]} -eq 0 ]; then
 fi
 
 echo ""
-echo "Step 5: Creating configuration file..."
+echo "Step 6: Creating configuration file..."
 cp "$SCRIPT_DIR/battery-monitor.sh" "$INSTALL_PATH"
 
 # Build the nodes array configuration
@@ -151,13 +157,13 @@ chmod +x "$INSTALL_PATH"
 echo "Installed to $INSTALL_PATH"
 
 echo ""
-echo "Step 6: Installing logrotate configuration..."
+echo "Step 7: Installing logrotate configuration..."
 cp "$SCRIPT_DIR/battery-monitor" /etc/logrotate.d/battery-monitor
 chmod 644 /etc/logrotate.d/battery-monitor
 echo "Logrotate configured at /etc/logrotate.d/battery-monitor"
 
 echo ""
-echo "Step 7: Installing ups-status utility..."
+echo "Step 8: Installing ups-status utility..."
 cp "$SCRIPT_DIR/ups-status" /usr/local/bin/ups-status
 chmod +x /usr/local/bin/ups-status
 
@@ -168,7 +174,7 @@ if ! grep -q "ups-status" /etc/profile; then
 fi
 
 echo ""
-echo "Step 8: Installing systemd service..."
+echo "Step 9: Installing systemd service..."
 cp "$SCRIPT_DIR/battery-monitor.service" "$SERVICE_PATH"
 systemctl daemon-reload
 systemctl enable battery-monitor.service
@@ -203,6 +209,6 @@ for node in "${nodes[@]}"; do
 done
 echo ""
 echo "4. Monitor logs:"
-echo "   tail -f /var/log/battery-monitor.log"
+echo "   tail -f /var/log/battery-monitor/monitor.log"
 echo ""
 echo "Setup complete. Service is running."

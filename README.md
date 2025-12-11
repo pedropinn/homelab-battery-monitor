@@ -137,7 +137,7 @@ systemctl start battery-monitor.service
 
 View logs:
 ```bash
-tail -f /var/log/battery-monitor.log
+tail -f /var/log/battery-monitor/monitor.log
 ```
 
 Check service status:

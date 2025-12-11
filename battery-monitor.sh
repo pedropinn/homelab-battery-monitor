@@ -12,10 +12,12 @@ WAKEUP_TIMEOUT=5           # Timeout in seconds for wakeonlan command
 UPS_NAME="apc@localhost"   # UPS identifier for NUT
 UPS_SHUTDOWN_LEVEL=70      # UPS battery % to shutdown nodes
 
-STATE_FILE="/tmp/battery_state"
-WAKEUP_DONE_FILE="/tmp/wakeup_done"
-SHUTDOWN_DONE_FILE="/tmp/shutdown_done"
-LOG_FILE="/var/log/battery-monitor.log"
+STATE_DIR="/var/lib/battery-monitor"
+LOG_DIR="/var/log/battery-monitor"
+STATE_FILE="$STATE_DIR/battery_state"
+WAKEUP_DONE_FILE="$STATE_DIR/wakeup_done"
+SHUTDOWN_DONE_FILE="$STATE_DIR/shutdown_done"
+LOG_FILE="$LOG_DIR/monitor.log"
 
 OTHER_NODES=(
     "10.10.10.30,84:47:09:0c:83:2d"

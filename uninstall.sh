@@ -52,11 +52,10 @@ rm -f /etc/nut/upsmon.conf
 echo "NUT configuration removed"
 
 echo ""
-echo "Step 7: Cleaning up state files..."
-rm -f /tmp/battery_state
-rm -f /tmp/wakeup_done
-rm -f /tmp/shutdown_done
-echo "State files removed"
+echo "Step 7: Cleaning up state and log directories..."
+rm -rf /var/lib/battery-monitor
+rm -rf /var/log/battery-monitor
+echo "State and log directories removed"
 
 echo ""
 echo "========================================="
@@ -66,10 +65,6 @@ echo ""
 echo "Note: The following were NOT removed:"
 echo "  - Installed packages (acpi, wakeonlan, nut, nut-client, nut-server)"
 echo "  - SSH keys (/root/.ssh/id_rsa)"
-echo "  - Log file (/var/log/battery-monitor.log)"
 echo ""
 echo "To remove packages manually:"
 echo "  apt remove acpi wakeonlan nut nut-client nut-server"
-echo ""
-echo "To remove log file:"
-echo "  rm /var/log/battery-monitor.log"
