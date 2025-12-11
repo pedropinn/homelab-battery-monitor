@@ -112,21 +112,21 @@ fi
 
 echo ""
 echo "Step 5: Configure target nodes"
-echo "Enter nodes in format: IP,MAC (e.g., 10.10.10.30,84:47:09:0c:83:2d)"
+echo "Enter nodes in format: USER,IP,MAC (e.g., root,10.10.10.30,84:47:09:0c:83:2d)"
 echo "Press Enter with empty input to finish"
 echo ""
 
 nodes=()
 
 while true; do
-    read -p "Node (IP,MAC or Enter to finish): " node_input
+    read -p "Node (USER,IP,MAC or Enter to finish): " node_input
     if [ -z "$node_input" ]; then
         break
     fi
 
     # Validate format
-    if ! echo "$node_input" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+,[0-9a-fA-F:]+$'; then
-        echo "Error: Invalid format. Use IP,MAC (e.g., 10.10.10.30,84:47:09:0c:83:2d)"
+    if ! echo "$node_input" | grep -qE '^[a-zA-Z0-9_-]+,[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+,[0-9a-fA-F:]+$'; then
+        echo "Error: Invalid format. Use USER,IP,MAC (e.g., root,10.10.10.30,84:47:09:0c:83:2d)"
         continue
     fi
 
@@ -192,20 +192,23 @@ echo ""
 echo "Next steps:"
 echo "1. Copy SSH keys to each server:"
 for node in "${nodes[@]}"; do
-    ip=$(echo "$node" | cut -d',' -f1)
-    echo "   ssh-copy-id root@$ip"
+    user=$(echo "$node" | cut -d',' -f1)
+    ip=$(echo "$node" | cut -d',' -f2)
+    echo "   ssh-copy-id $user@$ip"
 done
 echo ""
 echo "2. Test SSH connection to each server:"
 for node in "${nodes[@]}"; do
-    ip=$(echo "$node" | cut -d',' -f1)
-    echo "   ssh root@$ip 'echo Connection OK'"
+    user=$(echo "$node" | cut -d',' -f1)
+    ip=$(echo "$node" | cut -d',' -f2)
+    echo "   ssh $user@$ip 'echo Connection OK'"
 done
 echo ""
 echo "3. Enable Wake-on-LAN on each server:"
 for node in "${nodes[@]}"; do
-    ip=$(echo "$node" | cut -d',' -f1)
-    echo "   ssh root@$ip 'ethtool -s eth0 wol g'"
+    user=$(echo "$node" | cut -d',' -f1)
+    ip=$(echo "$node" | cut -d',' -f2)
+    echo "   ssh $user@$ip 'ethtool -s eth0 wol g'"
 done
 echo ""
 echo "4. Monitor logs:"

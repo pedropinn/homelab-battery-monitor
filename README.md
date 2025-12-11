@@ -105,12 +105,13 @@ chmod +x /etc/rc.local
 **5. Edit battery-monitor.sh and configure your servers:
 
 ```bash
-declare -A OTHER_NODES
-OTHER_NODES["10.10.10.30"]="84:47:09:0c:83:2d"
-OTHER_NODES["10.10.10.31"]="84:47:09:0c:83:2e"
+OTHER_NODES=(
+    "root,10.10.10.30,84:47:09:0c:83:2d"
+    "admin,10.10.10.31,84:47:09:0c:83:2e"
+)
 ```
 
-Format: IP="MAC_ADDRESS"
+Format: USER,IP,MAC
 
 Find MAC addresses on each server:
 ```bash

@@ -20,7 +20,7 @@ SHUTDOWN_DONE_FILE="$STATE_DIR/shutdown_done"
 LOG_FILE="$LOG_DIR/monitor.log"
 
 OTHER_NODES=(
-    "10.10.10.30,84:47:09:0c:83:2d"
+    "root,10.10.10.30,84:47:09:0c:83:2d"
 )
 
 
@@ -51,12 +51,16 @@ is_host_online() {
     ping -c 1 -W 2 "$1" &>/dev/null
 }
 
-get_node_ip() {
+get_node_user() {
     echo "$1" | cut -d',' -f1
 }
 
-get_node_mac() {
+get_node_ip() {
     echo "$1" | cut -d',' -f2
+}
+
+get_node_mac() {
+    echo "$1" | cut -d',' -f3
 }
 
 has_nodes_offline() {
@@ -83,10 +87,11 @@ shutdown_local_vms() {
 
 shutdown_other_nodes() {
     for node in "${OTHER_NODES[@]}"; do
+        local node_user=$(get_node_user "$node")
         local node_ip=$(get_node_ip "$node")
         if is_host_online "$node_ip"; then
             log_message "Node $node_ip shutting down"
-            ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no root@"$node_ip" "shutdown -h now" 2>/dev/null &
+            ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no "$node_user@$node_ip" "shutdown -h now" 2>/dev/null &
         fi
     done
 
